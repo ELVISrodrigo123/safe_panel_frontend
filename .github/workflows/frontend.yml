@@ -26,9 +26,6 @@ jobs:
         run: |
           corepack enable
           corepack prepare yarn@${{ env.YARN_VERSION }} --activate
-          
-      - name: Navigate to project directory
-        run: cd safe_control && pwd
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
