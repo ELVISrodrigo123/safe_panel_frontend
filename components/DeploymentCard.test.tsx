@@ -14,7 +14,7 @@ describe('DeploymentCard - Basic Render', () => {
     );
 
     render(<MockDeploymentCard />);
-    
+
     expect(screen.getByTestId('deployment-card')).toBeInTheDocument();
     expect(screen.getByText('SafePanel App')).toBeInTheDocument();
     expect(screen.getByText('Aplicación desplegada con CI/CD automático')).toBeInTheDocument();

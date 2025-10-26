@@ -88,12 +88,7 @@ const DeploymentCard: React.FC<DeploymentCardProps> = ({
 
         {/* Status and Version */}
         <Box display="flex" gap={1} mb={2} flexWrap="wrap">
-          <Chip
-            label={getStatusText()}
-            color={getStatusColor()}
-            size="small"
-            variant="outlined"
-          />
+          <Chip label={getStatusText()} color={getStatusColor()} size="small" variant="outlined" />
           <Chip label={`v${version}`} color="primary" size="small" />
         </Box>
 
