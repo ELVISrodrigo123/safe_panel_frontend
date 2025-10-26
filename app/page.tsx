@@ -50,9 +50,7 @@ export default function Home() {
         <Typography variant="h3" color="text.secondary">
           🌐 Tu app está funcionando en: http://188.166.63.175:3000
         </Typography>
-        <Typography>
-          elvis rodrigo 
-        </Typography>
+        <Typography>elvis rodrigo</Typography>
       </Box>
     </Container>
   );
