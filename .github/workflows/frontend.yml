@@ -50,6 +50,9 @@ jobs:
   build-and-push-docker-image:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./safe_panel
     needs: quality-checks
     steps:
       - name: Checkout repository
@@ -86,6 +89,9 @@ jobs:
   deploy-to-vps:
     name: Deploy to VPS
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./safe_panel
     needs: build-and-push-docker-image
     steps:
       - name: Deploy to VPS
