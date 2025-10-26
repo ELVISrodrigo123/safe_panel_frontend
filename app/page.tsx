@@ -1,4 +1,4 @@
-import HelloButton from "@/components/HelloButton";
+import HelloButton from '@/components/HelloButton';
 
 export default function Home() {
   return (
