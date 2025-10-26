@@ -12,6 +12,9 @@ jobs:
   quality-checks:
     name: Quality Checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./safe_panel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
