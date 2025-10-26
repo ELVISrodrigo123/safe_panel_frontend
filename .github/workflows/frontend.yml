@@ -50,10 +50,10 @@ jobs:
   build-and-push-docker-image:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    needs: quality-checks
     defaults:
       run:
-        working-directory: ./safe_panel
-    needs: quality-checks
+        working-directory: ./safe_panel 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -63,6 +63,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
+          cache-dependency-path: 'safe_panel/yarn.lock'
 
       - name: Install specific Yarn version
         run: |
@@ -89,9 +90,6 @@ jobs:
   deploy-to-vps:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./safe_panel
     needs: build-and-push-docker-image
     steps:
       - name: Deploy to VPS
