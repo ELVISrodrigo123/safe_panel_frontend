@@ -8,15 +8,11 @@ on:
 env:
   NODE_VERSION: '20.19.0'
   YARN_VERSION: '1.22.22'
-  WORKING_DIRECTORY: './safe_control'
 jobs:
 
   quality-checks:
     name: Quality Checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIRECTORY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,13 +21,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
-          cache-dependency-path: '${{ env.WORKING_DIRECTORY }}/yarn.lock'
 
       - name: Install specific Yarn version
         run: |
           corepack enable
           corepack prepare yarn@${{ env.YARN_VERSION }} --activate
+          
+      - name: Navigate to project directory
+        run: cd safe_control && pwd
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
