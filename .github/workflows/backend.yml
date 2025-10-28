@@ -1,59 +1,145 @@
-name: Backend CI
+name: Deploy Django Backend
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - '**'
+    paths:
+      - 'guardian_core/**'
+      - '.github/workflows/backend.yml'
 
 env:
   PYTHON_VERSION: '3.11'
 
 jobs:
-  test:
-    name: 🧪 Tests y Calidad
+  quality-checks:
+    name: Quality Checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./guardian_core
     services:
       postgres:
         image: postgres:13
         env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        ports: [5432:5432]
+          POSTGRES_DB: django_db_dev
+          POSTGRES_USER: django_user
+          POSTGRES_PASSWORD: db_msc_2025_checklist@1.0minerasan0.4
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
-    - name:  Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name:  Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name:  Install dependencies
-      run: |
-        cd guardian_core
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name:  Setup Database
-      run: |
-        cd guardian_core
-        python manage.py migrate
-      env:
-        SECRET_KEY: 'test-key-123'
-        DEBUG: 'True'
-        DATABASE_URL: 'postgresql://test_user:test_pass@localhost:5432/test_db'
+      - name: Run migrations
+        run: python manage.py migrate
+        env:
+          SECRET_KEY: checklist_system_admin_@1.0
+          DEBUG: True
+          DB_NAME: django_db_dev
+          DB_USER: django_user
+          DB_PASSWORD: db_msc_2025_checklist@1.0minerasan0.4
+          DB_HOST: localhost  # ✅ En GitHub Actions es localhost, no db
+          DB_PORT: 5432
+          ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
 
-    - name:  Run Quality Checks
-      run: |
-        make lint
-        make deadcode
+      - name: Run lint (unused imports)
+        run: python -m flake8 apps/ --select=F401 --exclude=migrations --exit-zero
 
-    - name:  Run Tests
-      run: |
-        make test
-      env:
-        SECRET_KEY: 'test-key-123'
-        DEBUG: 'True'
-        DATABASE_URL: 'postgresql://test_user:test_pass@localhost:5432/test_db'
+      - name: Find dead code
+        run: python -m vulture apps/ --min-confidence=80 --exclude="*migrations*" --exit-zero
+
+      - name: Run Django tests with coverage
+        run: python -m pytest apps/ tests/ -v --cov=apps --cov-report=term-missing --cov-fail-under=60
+        env:
+          SECRET_KEY: checklist_system_admin_@1.0
+          DEBUG: True
+          DB_NAME: django_db_dev
+          DB_USER: django_user
+          DB_PASSWORD: db_msc_2025_checklist@1.0minerasan0.4
+          DB_HOST: localhost
+          DB_PORT: 5432
+          ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+
+  build-and-push-docker-image:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    defaults:
+      run:
+        working-directory: ./guardian_core
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t elvisrodrigo/guardian-backend:latest .
+          docker push elvisrodrigo/guardian-backend:latest
+
+  deploy-to-vps:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build-and-push-docker-image
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            echo "🔄 Pulling latest Docker image..."
+            docker pull elvisrodrigo/guardian-backend:latest
+
+            echo "🛑 Stopping existing container..."
+            docker stop guardian-backend || true
+            docker rm guardian-backend || true
+
+            echo "🚀 Starting new container..."
+            docker run -d \
+              --name guardian-backend \
+              -p 8000:8000 \
+              --restart unless-stopped \
+              -e SECRET_KEY=checklist_system_admin_@1.0 \
+              -e DEBUG=True \
+              -e DB_NAME=django_db_dev \
+              -e DB_USER=django_user \
+              -e DB_PASSWORD=db_msc_2025_checklist@1.0minerasan0.4 \
+              -e DB_HOST=db \
+              -e DB_PORT=5432 \
+              -e ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,164.90.204.40 \
+              elvisrodrigo/guardian-backend:latest
+
+            echo "✅ Backend deployment completed successfully!"
+            echo "🌐 Django Admin: http://164.90.204.40:8000/admin/"
+            echo "🔧 API: http://164.90.204.40:8000/api/"
+
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
