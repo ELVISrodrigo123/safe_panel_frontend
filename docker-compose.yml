@@ -1,0 +1,81 @@
+services:
+  # BASE DE DATOS
+  db:
+    image: postgres:13
+    container_name: guardian_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_ROOT_PASSWORD: ${DB_ADMIN_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - guardian-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # BACKEND DJANGO
+  backend:
+    build:
+      context: ./guardian_core
+      target: production
+    container_name: guardian_backend
+    environment:
+      # Database
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      
+      # Django
+      DEBUG: ${DEBUG}
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},backend
+    volumes:
+      - media_volume:/guardian_core/media
+      - static_volume:/guardian_core/static
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - guardian-network
+    restart: unless-stopped
+
+  # FRONTEND REACT
+  frontend:
+    build:
+      context: ./safe_panel
+      target: development  # Cambia a 'production' para build final
+    container_name: guardian_frontend
+    environment:
+      REACT_APP_API_URL: ${NEXT_PUBLIC_API_URL}
+      REACT_APP_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+    volumes:
+      - ./safe_panel:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - guardian-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  guardian-network:
+    driver: bridge
