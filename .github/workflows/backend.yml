@@ -62,15 +62,20 @@ jobs:
       - name: Run lint (unused imports)
         run: |
           echo "🔍 Buscando imports no usados..."
-          python -m flake8 apps/ --select=F401 --exclude=migrations || echo "⚠️ Se encontraron imports no usados"
+          # Busca en todo el proyecto Django, excluyendo migrations
+          python -m flake8 . --select=F401 --exclude=migrations || echo "⚠️ Se encontraron imports no usados"
 
       - name: Find dead code
         run: |
           echo "🧹 Buscando código muerto..."
-          python -m vulture apps/ --min-confidence=80 --exclude="*migrations*" || echo "⚠️ Se encontró código muerto"
+          # Busca en todo el proyecto Django, excluyendo migrations
+          python -m vulture . --min-confidence=80 --exclude="*migrations*" || echo "⚠️ Se encontró código muerto"
 
-      - name: Run Django tests with coverage
-        run: python -m pytest apps/ tests/ -v --cov=apps --cov-report=term-missing --cov-fail-under=60
+      - name: Run Django tests
+        run: |
+          echo "🧪 Ejecutando tests..."
+          # Busca tests en cualquier carpeta del proyecto
+          python -m pytest . -v --cov=. --cov-report=term-missing --cov-fail-under=60
         env:
           SECRET_KEY: checklist_system_admin_@1.0
           DEBUG: True
