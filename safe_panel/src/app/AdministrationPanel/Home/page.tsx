@@ -6,6 +6,7 @@ export default function HomePage() {
     <>
       <HeaderNavbar></HeaderNavbar>
       <FeaturesSection></FeaturesSection>
+      <h1>holajefa</h1>
     </>
   );
 }
